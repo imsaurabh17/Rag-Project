@@ -23,6 +23,7 @@ def discover_captions(video_id:str):
         captions_meta = {
             "video_id":video_id,
             "language_code": data.language_code,
+            "base_language": data.language_code.split("-")[0],
             "is_generated": data.is_generated,
             "source": "youtube"
         }
@@ -30,16 +31,34 @@ def discover_captions(video_id:str):
     return captions
 
 def select_best_caption(captions):
-    preffered_lang = ['en','en-IN','en-US','hi']
-    lang = ""
-    for obj in captions:
-        if obj.get('language_code') in preffered_lang:
-            lang = obj.get('language_code')
-            break
-    if lang == "":
-        return f"Preffered language not available"
-    else:
-        return lang
+    '''
+    This function will get the caption metadata. It will select the best based on the quality first,
+    language second and it will return with the caption metadata with confidence.
+    '''
+
+    language_priority = ["en", "hi", "mr", "ta", "te", "kn"]
+
+    if not captions:
+        return None
+    
+    def language_rank(base_language):
+        if base_language in language_priority:
+            return language_priority.index(base_language)
+        return len(language_priority)
+
+    sorted_captions = sorted(
+        captions,
+        key = lambda c: (
+            c['is_generated'],
+            language_rank(c['base_language'])
+        )
+    )
+
+    best = sorted_captions[0]
+
+    best['confidence'] = "low" if best['is_generated'] else "high"
+
+    return best
 
 if __name__ == "__main__":
     urls = [
@@ -52,4 +71,7 @@ if __name__ == "__main__":
     # for u in urls:
     #     print(parse_video_id(u))
 
-    print(select_best_caption([{'video_id': '-UQ6OZywZ2I', 'language_code': 'hi', 'is_generated': True, 'source': 'youtube'}]))
+    captions = discover_captions("gmwQeIS8sPY")
+
+    print(f"captions are {captions}")
+    print(f"Best one is {select_best_caption(captions)}")
